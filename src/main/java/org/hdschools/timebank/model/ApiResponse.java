@@ -43,4 +43,15 @@ public class ApiResponse<T> {
         return new ApiResponse<>("success", message, data);
     }
 
+    /**
+     * Creates an error response that wraps the provided payload.
+     *
+     * @param message confirmation message returned to the caller
+     * @param data    payload data for the caller
+     * @return successful {@link ApiResponse}
+     */
+    public static <T> ApiResponse<T> error(String message, T data) {
+        return new ApiResponse<>("error", message, data);
+    }
+
 }
