@@ -1,6 +1,7 @@
 package org.hdschools.timebank.controller;
 
 import org.hdschools.timebank.model.ApiResponse;
+import org.hdschools.timebank.model.HealthResponse;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -17,7 +18,7 @@ public class HealthController {
      */
     @PostMapping("/health")
     public ApiResponse<String> health() {
-        return ApiResponse.success("Service is healthy", "OK");
+        return HealthResponse.success("Service is healthy", "OK");
     }
 
 }
