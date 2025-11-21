@@ -15,14 +15,14 @@ import lombok.Setter;
 import lombok.ToString;
 
 @Entity
-@Table(name = "event")
+@Table(name = "stu_user")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 @ToString
-public class Event {
+public class StuUser {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -31,27 +31,12 @@ public class Event {
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private Instant createdAt;
 
-    @Column(name = "init_stu_id")
-    private String initStuId;
+    @Column(name = "updated_at", nullable = false, insertable = false, updatable = false)
+    private Instant updatedAt;
 
-    @Column(name = "init_sta_id")
-    private String initStaId;
+    @Column(name = "user_id", nullable = false, unique = true)
+    private String userId;
 
-    @Column(name = "recv_stu_id")
-    private String recvStuId;
-
-    @Column(name = "recv_sta_id")
-    private String recvStaId;
-
-    @Column(name = "point_diff", nullable = false)
-    private int pointDiff;
-
-    @Column(name = "credit_diff", nullable = false)
-    private short creditDiff;
-
-    @Column(name = "type", nullable = false)
-    private String type;
-
-    @Column(name = "note")
-    private String note;
+    @Column(name = "password", nullable = false)
+    private String password;
 }
