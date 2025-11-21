@@ -10,12 +10,15 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class WebConfig implements WebMvcConfigurer {
 
     private final LoggingInterceptor loggingInterceptor;
+    private final AuthenticationInterceptor authenticationInterceptor;
 
     /**
-     * Registers the {@link LoggingInterceptor} so every request is logged.
+     * Registers interceptors for logging and authentication.
+     * Authentication interceptor runs after logging to validate tokens.
      */
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(loggingInterceptor);
+        registry.addInterceptor(authenticationInterceptor);
     }
 }
