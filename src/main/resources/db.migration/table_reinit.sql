@@ -1,4 +1,5 @@
 -- Drop all tables first (in reverse order to handle potential foreign key dependencies)
+DROP TABLE IF EXISTS `stu_balance`;
 DROP TABLE IF EXISTS `event`;
 DROP TABLE IF EXISTS `token`;
 DROP TABLE IF EXISTS `sta_user`;
@@ -45,5 +46,15 @@ CREATE TABLE `event` (
     `credit_diff` int NOT NULL DEFAULT '0',
     `type` varchar(255) NOT NULL,
     `content_html` mediumtext DEFAULT NULL,
+    PRIMARY KEY (`id`)
+  ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci;
+
+CREATE TABLE `stu_balance` (
+    `id` int unsigned NOT NULL AUTO_INCREMENT,
+    `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `user_id` varchar(255) UNIQUE NOT NULL COMMENT 'References stu_user.user_id',
+    `accumulated_points` int NOT NULL DEFAULT '0' COMMENT 'Total accumulated points for display',
+    `accumulated_credits` int NOT NULL DEFAULT '0' COMMENT 'Total accumulated credits for display',
     PRIMARY KEY (`id`)
   ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci;
