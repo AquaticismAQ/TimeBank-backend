@@ -2,7 +2,7 @@ package org.hdschools.timebank.controller;
 
 import org.hdschools.timebank.model.ApiResponse;
 import org.hdschools.timebank.model.HealthResponse;
-import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -16,7 +16,7 @@ public class HealthController {
      *
      * @return {@link ApiResponse} containing health details
      */
-    @PostMapping("/health")
+    @GetMapping("/health")
     public ApiResponse<String> health() {
         return HealthResponse.success("Service is healthy", "OK");
     }
