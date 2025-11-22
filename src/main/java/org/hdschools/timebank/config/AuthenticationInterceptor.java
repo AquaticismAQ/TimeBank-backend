@@ -27,6 +27,7 @@ public class AuthenticationInterceptor implements HandlerInterceptor {
 
     /**
      * Validates the authentication token and refreshes its expiration.
+     * Only applies to paths starting with /stu/ or /sta/.
      * If token is invalid or expired, returns 401 Unauthorized.
      *
      * @param request  current HTTP request
@@ -39,8 +40,13 @@ public class AuthenticationInterceptor implements HandlerInterceptor {
             throws Exception {
         String path = request.getRequestURI();
         
-        // Skip authentication for login endpoints and health check
-        if (path.endsWith("/login") || path.endsWith("/health")) {
+        // Only apply authentication to /stu/ and /sta/ paths
+        if (!path.startsWith("/stu/") && !path.startsWith("/sta/")) {
+            return true;
+        }
+        
+        // Skip authentication for login endpoints
+        if (path.endsWith("/login")) {
             return true;
         }
 
