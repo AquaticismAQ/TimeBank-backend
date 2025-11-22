@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS `event` (
     `recv_stu_id` varchar(255) DEFAULT NULL,
     `recv_sta_id` varchar(255) DEFAULT NULL,
     `point_diff` int NOT NULL DEFAULT '0',
-    `credit_diff` smallint NOT NULL DEFAULT '0',
+    `credit_diff` int NOT NULL DEFAULT '0',
     `type` varchar(255) NOT NULL,
     `note` varchar(255) DEFAULT NULL,
     PRIMARY KEY (`id`)

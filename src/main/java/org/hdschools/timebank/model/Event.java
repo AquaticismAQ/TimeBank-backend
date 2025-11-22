@@ -47,7 +47,7 @@ public class Event {
     private int pointDiff;
 
     @Column(name = "credit_diff", nullable = false)
-    private short creditDiff;
+    private int creditDiff;
 
     @Column(name = "type", nullable = false)
     private String type;
