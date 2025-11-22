@@ -52,6 +52,6 @@ public class Event {
     @Column(name = "type", nullable = false)
     private String type;
 
-    @Column(name = "note")
-    private String note;
+    @Column(name = "content_html")
+    private String contentHtml;
 }
