@@ -41,12 +41,15 @@ CREATE TABLE IF NOT EXISTS `event` (
     PRIMARY KEY (`id`)
   ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci;
 
-CREATE TABLE IF NOT EXISTS `stu_balance` (
+CREATE TABLE IF NOT EXISTS `stu_details` (
     `id` int unsigned NOT NULL AUTO_INCREMENT,
     `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     `user_id` varchar(255) UNIQUE NOT NULL COMMENT 'References stu_user.user_id',
     `accumulated_points` int NOT NULL DEFAULT '0' COMMENT 'Total accumulated points for display',
     `accumulated_credits` int NOT NULL DEFAULT '0' COMMENT 'Total accumulated credits for display',
+    `requests_made` int NOT NULL DEFAULT '0' COMMENT 'Total number of requests made by the student',
+    `requests_approved` int NOT NULL DEFAULT '0' COMMENT 'Total number of requests approved for the student',
+    `total_point_additions` int NOT NULL DEFAULT '0' COMMENT 'Total points added (only positive changes)',
     PRIMARY KEY (`id`)
   ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci

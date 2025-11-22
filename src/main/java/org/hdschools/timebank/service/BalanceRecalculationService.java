@@ -6,16 +6,16 @@ import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.hdschools.timebank.model.Event;
-import org.hdschools.timebank.model.StuBalance;
+import org.hdschools.timebank.model.StuDetails;
 import org.hdschools.timebank.repository.EventRepository;
-import org.hdschools.timebank.repository.StuBalanceRepository;
+import org.hdschools.timebank.repository.StuDetailsRepository;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Service responsible for scheduled recalculation of student balances.
- * Runs every Monday at 00:00 to ensure balance accuracy.
+ * Service responsible for scheduled recalculation of student details.
+ * Runs every Monday at 00:00 to ensure data accuracy.
  */
 @Service
 @RequiredArgsConstructor
@@ -23,22 +23,23 @@ import org.springframework.transaction.annotation.Transactional;
 public class BalanceRecalculationService {
 
     private final EventRepository eventRepository;
-    private final StuBalanceRepository stuBalanceRepository;
+    private final StuDetailsRepository stuDetailsRepository;
 
     private static final int INITIAL_POINTS = 0;
     private static final int INITIAL_CREDITS = 100;
 
     /**
-     * Recalculates all student balances based on event history.
+     * Recalculates all student details based on event history.
      * Scheduled to run every Monday at 00:00 (midnight).
      * <p>
      * Points start at 0 and only change with "accepted" type events.
      * Credits start at 100 and change with both "accepted" and "rejected" type events.
+     * Also calculates: requests made (pending+accepted+rejected), requests approved, and total point additions.
      */
     @Scheduled(cron = "0 0 0 * * MON")
     @Transactional
     public void recalculateAllBalances() {
-        log.info("Starting scheduled balance recalculation...");
+        log.info("Starting scheduled details recalculation...");
         
         try {
             // Calculate points from "accepted" events only
@@ -47,53 +48,55 @@ public class BalanceRecalculationService {
             // Calculate credits from "accepted" and "rejected" events
             Map<String, Integer> creditsByStudent = calculateCreditsByStudent();
             
+            // Calculate request statistics
+            Map<String, Integer> requestsMadeByStudent = calculateRequestsMadeByStudent();
+            Map<String, Integer> requestsApprovedByStudent = calculateRequestsApprovedByStudent();
+            Map<String, Integer> pointAdditionsByStudent = calculatePointAdditionsByStudent();
+            
             // Get all unique student user IDs
-            Map<String, StuBalance> balancesToSave = new HashMap<>();
+            Map<String, StuDetails> detailsToSave = new HashMap<>();
             
-            // Process all students who have point changes
-            for (Map.Entry<String, Integer> entry : pointsByStudent.entrySet()) {
-                String userId = entry.getKey();
-                int points = entry.getValue();
-                int credits = creditsByStudent.getOrDefault(userId, 0) + INITIAL_CREDITS;
-                
-                StuBalance balance = stuBalanceRepository.findByUserId(userId)
-                        .orElse(StuBalance.builder()
-                                .userId(userId)
-                                .accumulatedPoints(0)
-                                .accumulatedCredits(0)
-                                .build());
-                
-                balance.setAccumulatedPoints(INITIAL_POINTS + points);
-                balance.setAccumulatedCredits(credits);
-                balancesToSave.put(userId, balance);
+            // Collect all student user IDs from all maps
+            for (String userId : requestsMadeByStudent.keySet()) {
+                if (!detailsToSave.containsKey(userId)) {
+                    detailsToSave.put(userId, createOrLoadDetails(userId));
+                }
             }
-            
-            // Process students who only have credit changes (rejected but no accepted)
-            for (Map.Entry<String, Integer> entry : creditsByStudent.entrySet()) {
-                String userId = entry.getKey();
-                if (!balancesToSave.containsKey(userId)) {
-                    int credits = entry.getValue() + INITIAL_CREDITS;
-                    
-                    StuBalance balance = stuBalanceRepository.findByUserId(userId)
-                            .orElse(StuBalance.builder()
-                                    .userId(userId)
-                                    .accumulatedPoints(0)
-                                    .accumulatedCredits(0)
-                                    .build());
-                    
-                    balance.setAccumulatedPoints(INITIAL_POINTS);
-                    balance.setAccumulatedCredits(credits);
-                    balancesToSave.put(userId, balance);
+            for (String userId : pointsByStudent.keySet()) {
+                if (!detailsToSave.containsKey(userId)) {
+                    detailsToSave.put(userId, createOrLoadDetails(userId));
+                }
+            }
+            for (String userId : creditsByStudent.keySet()) {
+                if (!detailsToSave.containsKey(userId)) {
+                    detailsToSave.put(userId, createOrLoadDetails(userId));
                 }
             }
             
-            // Save all balances
-            if (!balancesToSave.isEmpty()) {
-                stuBalanceRepository.saveAll(balancesToSave.values());
-                log.info("Balance recalculation completed successfully. Updated {} student balances.", 
-                        balancesToSave.size());
+            // Update all details
+            for (StuDetails details : detailsToSave.values()) {
+                String userId = details.getUserId();
+                
+                int points = pointsByStudent.getOrDefault(userId, 0);
+                int credits = creditsByStudent.getOrDefault(userId, 0);
+                int requestsMade = requestsMadeByStudent.getOrDefault(userId, 0);
+                int requestsApproved = requestsApprovedByStudent.getOrDefault(userId, 0);
+                int pointAdditions = pointAdditionsByStudent.getOrDefault(userId, 0);
+                
+                details.setAccumulatedPoints(INITIAL_POINTS + points);
+                details.setAccumulatedCredits(INITIAL_CREDITS + credits);
+                details.setRequestsMade(requestsMade);
+                details.setRequestsApproved(requestsApproved);
+                details.setTotalPointAdditions(pointAdditions);
+            }
+            
+            // Save all details
+            if (!detailsToSave.isEmpty()) {
+                stuDetailsRepository.saveAll(detailsToSave.values());
+                log.info("Details recalculation completed successfully. Updated {} student records.", 
+                        detailsToSave.size());
             } else {
-                log.info("No student balances to recalculate.");
+                log.info("No student details to recalculate.");
             }
             
         } catch (Exception e) {
@@ -133,5 +136,79 @@ public class BalanceRecalculationService {
         }
         
         return creditsMap;
+    }
+
+    /**
+     * Calculates total requests made per student (pending, accepted, and rejected).
+     *
+     * @return map of student user ID to total requests made
+     */
+    private Map<String, Integer> calculateRequestsMadeByStudent() {
+        List<Event> allEvents = eventRepository.findAll();
+        Map<String, Integer> requestsMap = new HashMap<>();
+        
+        for (Event event : allEvents) {
+            if (event.getInitStuId() != null && 
+                ("pending".equals(event.getType()) || "accepted".equals(event.getType()) || "rejected".equals(event.getType()))) {
+                String userId = event.getInitStuId();
+                requestsMap.put(userId, requestsMap.getOrDefault(userId, 0) + 1);
+            }
+        }
+        
+        return requestsMap;
+    }
+
+    /**
+     * Calculates total approved requests per student.
+     *
+     * @return map of student user ID to total approved requests
+     */
+    private Map<String, Integer> calculateRequestsApprovedByStudent() {
+        List<Event> acceptedEvents = eventRepository.findAllAcceptedByStudents();
+        Map<String, Integer> approvedMap = new HashMap<>();
+        
+        for (Event event : acceptedEvents) {
+            String userId = event.getInitStuId();
+            approvedMap.put(userId, approvedMap.getOrDefault(userId, 0) + 1);
+        }
+        
+        return approvedMap;
+    }
+
+    /**
+     * Calculates total point additions per student (only positive point changes from accepted events).
+     *
+     * @return map of student user ID to total point additions
+     */
+    private Map<String, Integer> calculatePointAdditionsByStudent() {
+        List<Event> acceptedEvents = eventRepository.findAllAcceptedByStudents();
+        Map<String, Integer> additionsMap = new HashMap<>();
+        
+        for (Event event : acceptedEvents) {
+            String userId = event.getInitStuId();
+            if (event.getPointDiff() > 0) {
+                additionsMap.put(userId, additionsMap.getOrDefault(userId, 0) + event.getPointDiff());
+            }
+        }
+        
+        return additionsMap;
+    }
+
+    /**
+     * Creates a new StuDetails or loads existing one for the given user ID.
+     *
+     * @param userId the student user ID
+     * @return StuDetails instance
+     */
+    private StuDetails createOrLoadDetails(String userId) {
+        return stuDetailsRepository.findByUserId(userId)
+                .orElse(StuDetails.builder()
+                        .userId(userId)
+                        .accumulatedPoints(0)
+                        .accumulatedCredits(0)
+                        .requestsMade(0)
+                        .requestsApproved(0)
+                        .totalPointAdditions(0)
+                        .build());
     }
 }

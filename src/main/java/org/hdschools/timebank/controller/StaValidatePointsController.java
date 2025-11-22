@@ -7,9 +7,9 @@ import org.hdschools.timebank.model.ApiResponse;
 import org.hdschools.timebank.model.Event;
 import org.hdschools.timebank.model.StaValidatePointsRequest;
 import org.hdschools.timebank.model.StaValidatePointsResponse;
-import org.hdschools.timebank.model.StuBalance;
+import org.hdschools.timebank.model.StuDetails;
 import org.hdschools.timebank.repository.EventRepository;
-import org.hdschools.timebank.repository.StuBalanceRepository;
+import org.hdschools.timebank.repository.StuDetailsRepository;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * Handles staff validation of student point update requests.
  * Creates "accepted" or "rejected" type entries in the event table.
- * Updates student balance on accepted requests.
+ * Updates student details on accepted requests.
  */
 @RestController
 @RequestMapping("/sta")
@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class StaValidatePointsController {
 
     private final EventRepository eventRepository;
-    private final StuBalanceRepository stuBalanceRepository;
+    private final StuDetailsRepository stuDetailsRepository;
 
     /**
      * Validates (accepts or rejects) a pending student point update request.
@@ -76,19 +76,29 @@ public class StaValidatePointsController {
         // Save to database
         Event savedEvent = eventRepository.save(validationEvent);
 
-        // Update student balance if request is accepted
+        // Update student details if request is accepted
         if (request.isAccepted()) {
             String studentUserId = originalRequest.getInitStuId();
-            StuBalance balance = stuBalanceRepository.findByUserId(studentUserId)
-                    .orElse(StuBalance.builder()
+            StuDetails details = stuDetailsRepository.findByUserId(studentUserId)
+                    .orElse(StuDetails.builder()
                             .userId(studentUserId)
                             .accumulatedPoints(0)
                             .accumulatedCredits(0)
+                            .requestsMade(0)
+                            .requestsApproved(0)
+                            .totalPointAdditions(0)
                             .build());
             
-            balance.setAccumulatedPoints(balance.getAccumulatedPoints() + request.getPointDiff());
-            balance.setAccumulatedCredits(balance.getAccumulatedCredits() + request.getCreditDiff());
-            stuBalanceRepository.save(balance);
+            details.setAccumulatedPoints(details.getAccumulatedPoints() + request.getPointDiff());
+            details.setAccumulatedCredits(details.getAccumulatedCredits() + request.getCreditDiff());
+            details.setRequestsApproved(details.getRequestsApproved() + 1);
+            
+            // Add to totalPointAdditions only if pointDiff is positive
+            if (request.getPointDiff() > 0) {
+                details.setTotalPointAdditions(details.getTotalPointAdditions() + request.getPointDiff());
+            }
+            
+            stuDetailsRepository.save(details);
         }
 
         // Return success response with event ID
